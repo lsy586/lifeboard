@@ -61,7 +61,7 @@
 
                 <nav class="space-y-1 text-left">
                     <button onclick="switchTab('tab-calendar')" id="btn-tab-calendar" class="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl bg-theme-orange text-white transition-all text-left">
-                        <i class="fa-solid fa-calendar-days w-4 text-left"></i> 5월 캘린더
+                        <i class="fa-solid fa-calendar-days w-4 text-left"></i> <span id="sidebar-cal-label">캘린더</span>
                     </button>
                     <button onclick="switchTab('tab-study')" id="btn-tab-study" class="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl hover:bg-[#245d60] transition-all text-slate-300 text-left">
                         <i class="fa-solid fa-book-open w-4 text-left"></i> 공부계획 & 디데이
@@ -83,14 +83,13 @@
             
             <div id="tab-calendar" class="tab-content space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/60 shadow-xs">
-                    <h2 class="text-lg font-black text-slate-800 shrink-0" id="calendar-header-title">5월 캘린더</h2>
-                    <div class="flex items-center bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full shrink-0 whitespace-nowrap no-scrollbar">
-                        <button onclick="switchToCalendarMode('month')" id="btn-mode-month" class="px-3 py-1.5 text-[11px] font-black rounded-lg bg-white text-slate-800 shadow-xs border border-slate-200/50 inline-block">월 (확대뷰)</button>
-                        <button onclick="switchToCalendarMode('week', 1)" id="btn-mode-w1" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block">1주차</button>
-                        <button onclick="switchToCalendarMode('week', 2)" id="btn-mode-w2" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block">2주차</button>
-                        <button onclick="switchToCalendarMode('week', 3)" id="btn-mode-w3" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block">3주차</button>
-                        <button onclick="switchToCalendarMode('week', 4)" id="btn-mode-w4" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block">4주차</button>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="goToPrevMonth()" class="px-2.5 py-1.5 text-xs font-black rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">←</button>
+                        <h2 class="text-lg font-black text-slate-800 whitespace-nowrap" id="calendar-header-title">캘린더</h2>
+                        <button onclick="goToNextMonth()" class="px-2.5 py-1.5 text-xs font-black rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">→</button>
+                        <button onclick="goToToday()" class="px-2.5 py-1.5 text-[11px] font-black rounded-lg bg-theme-orange text-white hover:opacity-90">오늘</button>
                     </div>
+                    <div id="calendar-mode-buttons" class="flex items-center bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full shrink-0 whitespace-nowrap no-scrollbar"></div>
                 </div>
 
                 <div id="box-month-view" class="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-4">
@@ -106,7 +105,7 @@
                         <div id="week-header-dday-zone" class="text-xs font-black text-theme-orange"></div>
                     </div>
                     <div class="w-full bg-slate-100 grid grid-cols-7 text-center font-black text-[11px] text-slate-500 border-b border-slate-200 py-2">
-                        <div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="text-blue-600">토</div><div class="text-red-600">일</div>
+                        <div class="text-red-600">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="text-blue-600">토</div>
                     </div>
                     <div id="week-days-grid" class="w-full grid grid-cols-7 bg-white divide-x divide-slate-100"></div>
                 </div>
@@ -276,7 +275,13 @@
     </div>
 
     <script>
-        const TODAY_BASE_STR = "2026-05-19";
+        const TODAY_BASE_STR = (() => {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        })();
         
         // ⚠️ [중요] 자신의 실제 Supabase 프로젝트 API 키셋으로 치환하세요.
         const SUPABASE_URL = "https://cuuhrquajxdotyakhnoc.supabase.co";
@@ -285,10 +290,12 @@
         const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
         // 글로벌 상태 제어 변수
-        let currentActiveUserId = null; 
+        let currentActiveUserId = null;
         let currentSelectedDateStr = "";
         let currentCalendarMode = "month";
         let currentSelectedWeekNum = 1;
+        let viewYear = (new Date()).getFullYear();
+        let viewMonth = (new Date()).getMonth() + 1;
         let studyTabSelectedDateStr = TODAY_BASE_STR;
         let inlineEditorIsEditMode = false;
         let globalWeightChartInstance = null;
@@ -549,20 +556,61 @@
         // ==========================================
         // 캘린더 내부 로직 및 헬퍼 함수
         // ==========================================
-        function getMay2026DaysInfo() {
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function getMonthDaysInfo(year, month) {
             const days = [];
-            // 2026년 5월 1일은 금요일 (이전 빈 칸 5개 채우기용 데이터 설정 구조화)
-            for(let i=26; i<=30; i++) {
-                days.push({ dayNum: i, fullDateStr: `2026-04-${i}`, isCurrentMonth: false });
+            const firstDow = new Date(year, month - 1, 1).getDay(); // 0=Sun
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const prevDaysInMonth = new Date(year, month - 1, 0).getDate();
+            const pm = month === 1 ? 12 : month - 1;
+            const py = month === 1 ? year - 1 : year;
+            const nm = month === 12 ? 1 : month + 1;
+            const ny = month === 12 ? year + 1 : year;
+
+            for (let i = firstDow - 1; i >= 0; i--) {
+                const dnum = prevDaysInMonth - i;
+                days.push({ dayNum: dnum, fullDateStr: `${py}-${pad2(pm)}-${pad2(dnum)}`, isCurrentMonth: false });
             }
-            for(let i=1; i<=31; i++) {
-                const dayStr = i < 10 ? '0' + i : i;
-                days.push({ dayNum: i, fullDateStr: `2026-05-${dayStr}`, isCurrentMonth: true });
+            for (let i = 1; i <= daysInMonth; i++) {
+                days.push({ dayNum: i, fullDateStr: `${year}-${pad2(month)}-${pad2(i)}`, isCurrentMonth: true });
             }
-            for(let i=1; i<=6; i++) {
-                days.push({ dayNum: i, fullDateStr: `2026-06-0${i}`, isCurrentMonth: false });
+            let nd = 1;
+            while (days.length < 42) {
+                days.push({ dayNum: nd, fullDateStr: `${ny}-${pad2(nm)}-${pad2(nd)}`, isCurrentMonth: false });
+                nd++;
             }
-            return days.slice(0, 42); 
+            return days;
+        }
+
+        function countWeeksInView(year, month) {
+            const days = getMonthDaysInfo(year, month);
+            let count = 0;
+            for (let n = 1; n <= 6; n++) {
+                const s = (n - 1) * 7;
+                const slice = days.slice(s, s + 7);
+                if (slice.some(d => d.isCurrentMonth)) count = n;
+            }
+            return count;
+        }
+
+        function goToPrevMonth() {
+            if (viewMonth === 1) { viewMonth = 12; viewYear--; } else { viewMonth--; }
+            currentSelectedWeekNum = 1;
+            renderCalendarMaster();
+        }
+        function goToNextMonth() {
+            if (viewMonth === 12) { viewMonth = 1; viewYear++; } else { viewMonth++; }
+            currentSelectedWeekNum = 1;
+            renderCalendarMaster();
+        }
+        function goToToday() {
+            const d = new Date();
+            viewYear = d.getFullYear();
+            viewMonth = d.getMonth() + 1;
+            currentCalendarMode = 'month';
+            currentSelectedWeekNum = 1;
+            renderCalendarMaster();
         }
 
         function renderCalendarMaster() {
@@ -585,31 +633,48 @@
         }
 
         function updateCalendarUIButtons() {
-            const btnModeIds = ['month', 'w1', 'w2', 'w3', 'w4'];
-            btnModeIds.forEach(id => {
-                const btn = document.getElementById(`btn-mode-${id}`);
-                if(!btn) return;
-                btn.className = "px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block";
-            });
+            const headerLabel = `${viewYear}년 ${viewMonth}월 캘린더`;
+            const titleEl = document.getElementById('calendar-header-title');
+            if (titleEl) titleEl.innerText = headerLabel;
+            const sideEl = document.getElementById('sidebar-cal-label');
+            if (sideEl) sideEl.innerText = `${viewMonth}월 캘린더`;
 
-            const activeId = currentCalendarMode === 'month' ? 'month' : `w${currentSelectedWeekNum}`;
-            const activeBtn = document.getElementById(`btn-mode-${activeId}`);
-            if(activeBtn) {
-                activeBtn.className = "px-3 py-1.5 text-[11px] font-black rounded-lg bg-white text-slate-800 shadow-xs border border-slate-200/50 inline-block";
+            const container = document.getElementById('calendar-mode-buttons');
+            if (!container) return;
+            container.innerHTML = "";
+
+            const inactiveCls = "px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block";
+            const activeCls = "px-3 py-1.5 text-[11px] font-black rounded-lg bg-white text-slate-800 shadow-xs border border-slate-200/50 inline-block";
+
+            const monthBtn = document.createElement('button');
+            monthBtn.id = 'btn-mode-month';
+            monthBtn.onclick = () => switchToCalendarMode('month');
+            monthBtn.innerText = '월 (확대뷰)';
+            monthBtn.className = currentCalendarMode === 'month' ? activeCls : inactiveCls;
+            container.appendChild(monthBtn);
+
+            const numWeeks = countWeeksInView(viewYear, viewMonth);
+            for (let w = 1; w <= numWeeks; w++) {
+                const b = document.createElement('button');
+                b.id = `btn-mode-w${w}`;
+                b.onclick = () => switchToCalendarMode('week', w);
+                b.innerText = `${w}주차`;
+                b.className = (currentCalendarMode === 'week' && currentSelectedWeekNum === w) ? activeCls : inactiveCls;
+                container.appendChild(b);
             }
         }
 
         function renderMonthCalendarView() {
             const grid = document.getElementById('month-calendar-grid');
             grid.innerHTML = "";
-            const allDays = getMay2026DaysInfo();
+            const allDays = getMonthDaysInfo(viewYear, viewMonth);
 
             allDays.forEach(day => {
                 const div = document.createElement('div');
                 div.className = `p-2 border border-slate-100 rounded-xl min-h-[90px] flex flex-col justify-between cursor-pointer transition text-left ${day.isCurrentMonth ? 'bg-white hover:border-theme-orange' : 'bg-slate-50/70 opacity-40'}`;
                 
                 if(day.fullDateStr === TODAY_BASE_STR) {
-                    div.className += " ring-2 ring-theme-orange bg-orange-50/10";
+                    div.className += " ring-2 ring-red-500 border-red-500 bg-red-50/30";
                 }
 
                 div.onclick = () => selectDateForInlineEditor(day.fullDateStr);
@@ -633,11 +698,11 @@
         function renderWeekCalendarView() {
             const grid = document.getElementById('week-days-grid');
             grid.innerHTML = "";
-            document.getElementById('week-view-title').innerText = `2026년 5월 [${currentSelectedWeekNum}주차] 타임라인 스케줄`;
+            document.getElementById('week-view-title').innerText = `${viewYear}년 ${viewMonth}월 [${currentSelectedWeekNum}주차] 타임라인 스케줄`;
 
-            const allDays = getMay2026DaysInfo();
-            // 월요일부터 시작하는 주차 슬라이싱 매핑
-            const startIdx = (currentSelectedWeekNum - 1) * 7 + 4; 
+            const allDays = getMonthDaysInfo(viewYear, viewMonth);
+            // 일요일 시작 7일 슬라이싱 (월 그리드와 동일한 SUN-start 기준)
+            const startIdx = (currentSelectedWeekNum - 1) * 7;
             const targetWeekDays = allDays.slice(startIdx, startIdx + 7);
 
             targetWeekDays.forEach(day => {
@@ -653,7 +718,7 @@
 
                 const div = document.createElement('div');
                 div.className = "p-3 min-h-[300px] space-y-2 bg-white cursor-pointer hover:bg-slate-50/50 text-left";
-                if(day.fullDateStr === TODAY_BASE_STR) div.className += " bg-orange-50/20 font-black";
+                if(day.fullDateStr === TODAY_BASE_STR) div.className += " ring-2 ring-red-500 ring-inset bg-red-50/30 font-black relative z-10";
 
                 div.onclick = () => selectDateForInlineEditor(day.fullDateStr);
                 div.innerHTML = `
@@ -832,7 +897,7 @@
         function renderStudyMiniCalendar() {
             const grid = document.getElementById('study-mini-calendar-grid');
             grid.innerHTML = "";
-            const days = getMay2026DaysInfo();
+            const days = getMonthDaysInfo(viewYear, viewMonth);
 
             days.forEach(d => {
                 const div = document.createElement('div');
@@ -938,8 +1003,8 @@
             const summaryBox = document.getElementById('diet-weekly-summary-list');
             summaryBox.innerHTML = "";
 
-            const days = getMay2026DaysInfo();
-            const startIdx = 4; // 1주차 월요일 2026-04-27부터 매칭 분할
+            const days = getMonthDaysInfo(viewYear, viewMonth);
+            const startIdx = (currentSelectedWeekNum - 1) * 7;
             const targetWeekDays = days.slice(startIdx, startIdx + 7);
 
             targetWeekDays.forEach(day => {
