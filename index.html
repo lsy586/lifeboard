@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initi1al-scale=1.0">
     <title>크루 라이프보드 시스템 (Supabase 연동)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -282,7 +282,7 @@
         const SUPABASE_URL = "https://cuuhrquajxdotyakhnoc.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1dWhycXVhanhkb3R5YWtobm9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNjQxNzUsImV4cCI6MjA5NDY0MDE3NX0.OsJjaT1RtUMtgG0Za8kRzrEHpWBnPurAK7mvWy5s3KU";
 
-        const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+        const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
         // 글로벌 상태 제어 변수
         let currentActiveUserId = null; 
@@ -299,7 +299,7 @@
         let cachedLifeLogs = [];
 
         window.addEventListener('DOMContentLoaded', async () => {
-            if (!supabase) {
+            if (!sb) {
                 alert("Supabase 클라이언트 초기화에 실패했습니다. 라이브러리 및 설정을 확인하세요.");
                 return;
             }
@@ -311,15 +311,15 @@
         // 데이터 백엔드로부터 동기화 동적 수신
         async function refreshAllServerData() {
             try {
-                const { data: users, error: uErr } = await supabase.from('crew_users').select('*').order('id', { ascending: true });
+                const { data: users, error: uErr } = await sb.from('crew_users').select('*').order('id', { ascending: true });
                 if(uErr) throw uErr;
                 cachedCrewUsers = users || [];
 
-                const { data: cats, error: cErr } = await supabase.from('study_categories').select('*');
+                const { data: cats, error: cErr } = await sb.from('study_categories').select('*');
                 if(cErr) throw cErr;
                 cachedStudyCategories = cats || [];
 
-                const { data: logs, error: lErr } = await supabase.from('daily_life_logs').select('*');
+                const { data: logs, error: lErr } = await sb.from('daily_life_logs').select('*');
                 if(lErr) throw lErr;
                 cachedLifeLogs = logs || [];
 
@@ -899,7 +899,7 @@
                 meals: existingLog ? existingLog.meals : { morning: "", lunch: "", dinner: "" }
             };
 
-            const { error } = await supabase.from('daily_life_logs').upsert(payload, { onConflict: 'user_id, log_date' });
+            const { error } = await sb.from('daily_life_logs').upsert(payload, { onConflict: 'user_id, log_date' });
             if (error) { alert("저장 오류: " + error.message); return; }
 
             labelInput.value = "";
@@ -913,7 +913,7 @@
 
             log.study_todos[idx].checked = !log.study_todos[idx].checked;
 
-            const { error } = await supabase.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
+            const { error } = await sb.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
             if (error) alert("서버 연동 실패: " + error.message);
             await refreshAllServerData();
             renderStudySelectedDateLabel();
@@ -925,7 +925,7 @@
 
             log.study_todos.splice(idx, 1);
 
-            const { error } = await supabase.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
+            const { error } = await sb.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
             if (error) alert("서버 반영 실패: " + error.message);
             await refreshAllServerData();
             renderStudySelectedDateLabel();
@@ -1040,7 +1040,7 @@
                 meals: existingLog ? existingLog.meals : { morning: "", lunch: "", dinner: "" }
             };
 
-            const { error } = await supabase.from('daily_life_logs').upsert(payload, { onConflict: 'user_id, log_date' });
+            const { error } = await sb.from('daily_life_logs').upsert(payload, { onConflict: 'user_id, log_date' });
             if(error) alert("서버 연동 오류: " + error.message);
 
             textInput.value = "";
@@ -1054,7 +1054,7 @@
 
             log.schedules.splice(idx, 1);
 
-            const { error } = await supabase.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
+            const { error } = await sb.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
             if(error) alert("서버 삭제 에러: " + error.message);
 
             await refreshAllServerData();
@@ -1102,7 +1102,7 @@
 
         async function saveBaseAsset() {
             const amt = parseInt(document.getElementById('input-asset-base').value) || 0;
-            const { error } = await supabase.from('crew_users').update({ base_asset: amt }).eq('id', currentActiveUserId);
+            const { error } = await sb.from('crew_users').update({ base_asset: amt }).eq('id', currentActiveUserId);
             if (error) alert("자산 설정 실패: " + error.message);
 
             await refreshAllServerData();
@@ -1117,7 +1117,7 @@
             let currentSalaries = user.salaries || {};
             currentSalaries[m] = amt;
 
-            const { error } = await supabase.from('crew_users').update({ salaries: currentSalaries }).eq('id', currentActiveUserId);
+            const { error } = await sb.from('crew_users').update({ salaries: currentSalaries }).eq('id', currentActiveUserId);
             if(error) alert("정산 처리 에러: " + error.message);
 
             document.getElementById('input-salary-amount').value = "";
@@ -1147,7 +1147,7 @@
                 meals: existingLog ? existingLog.meals : { morning: "", lunch: "", dinner: "" }
             };
 
-            const { error } = await supabase.from('daily_life_logs').upsert(payload, { onConflict: 'user_id, log_date' });
+            const { error } = await sb.from('daily_life_logs').upsert(payload, { onConflict: 'user_id, log_date' });
             if (error) alert("가계부 동기화 실패: " + error.message);
 
             tInput.value = ""; aInput.value = "";
@@ -1161,7 +1161,7 @@
 
             log.spends.splice(idx, 1);
 
-            const { error } = await supabase.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
+            const { error } = await sb.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
             if(error) alert("서버 가계부 삭감 에러: " + error.message);
 
             await refreshAllServerData();
