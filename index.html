@@ -297,6 +297,9 @@
         let viewYear = (new Date()).getFullYear();
         let viewMonth = (new Date()).getMonth() + 1;
         let pendingInlineTodos = [];
+        let pendingInlineSchedules = [];
+        let pendingInlineWorkouts = [];
+        let pendingInlineSpends = [];
         let studyTabSelectedDateStr = TODAY_BASE_STR;
         let inlineEditorIsEditMode = false;
         let globalWeightChartInstance = null;
@@ -705,14 +708,23 @@
 
             targetWeekDays.forEach(day => {
                 const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === day.fullDateStr);
-                let todos = log ? log.study_todos || [] : [];
-                let schedules = log ? log.schedules || [] : [];
-                let spends = log ? log.spends || [] : [];
+                const todos = log ? log.study_todos || [] : [];
+                const schedules = log ? log.schedules || [] : [];
+                const spends = log ? log.spends || [] : [];
+                const workouts = log ? log.workouts || [] : [];
+                const meals = log && log.meals ? log.meals : { morning: "", lunch: "", dinner: "" };
+                const amW = log ? log.diet_am_w : null;
+                const pmW = log ? log.diet_pm_w : null;
 
                 let listHtml = "";
-                schedules.forEach(s => listHtml += `<div class="bg-indigo-50 border-l-2 border-indigo-500 text-indigo-800 p-1 rounded text-[10px] font-bold">📌 ${s}</div>`);
                 todos.forEach(t => listHtml += `<div class="bg-orange-50 border-l-2 border-orange-500 text-orange-800 p-1 rounded text-[10px] font-bold">${t.checked ? '✅' : '📚'} [${t.category}] ${t.label}</div>`);
-                spends.forEach(s => listHtml += `<div class="bg-rose-50 border-l-2 border-rose-500 text-rose-800 p-1 rounded text-[10px] font-bold">💸 -${s.cost.toLocaleString()}원</div>`);
+                if (amW || pmW) listHtml += `<div class="bg-emerald-50 border-l-2 border-emerald-500 text-emerald-800 p-1 rounded text-[10px] font-bold">⚖️ ${amW || '-'}/${pmW || '-'}kg</div>`;
+                if (meals.morning) listHtml += `<div class="bg-yellow-50 border-l-2 border-yellow-500 text-yellow-800 p-1 rounded text-[10px] font-bold">🍱 아 ${meals.morning}</div>`;
+                if (meals.lunch) listHtml += `<div class="bg-yellow-50 border-l-2 border-yellow-500 text-yellow-800 p-1 rounded text-[10px] font-bold">🍱 점 ${meals.lunch}</div>`;
+                if (meals.dinner) listHtml += `<div class="bg-yellow-50 border-l-2 border-yellow-500 text-yellow-800 p-1 rounded text-[10px] font-bold">🍱 저 ${meals.dinner}</div>`;
+                workouts.forEach(w => listHtml += `<div class="bg-teal-50 border-l-2 border-teal-500 text-teal-800 p-1 rounded text-[10px] font-bold">💪 ${w}</div>`);
+                schedules.forEach(s => listHtml += `<div class="bg-indigo-50 border-l-2 border-indigo-500 text-indigo-800 p-1 rounded text-[10px] font-bold">📌 ${s}</div>`);
+                spends.forEach(s => listHtml += `<div class="bg-rose-50 border-l-2 border-rose-500 text-rose-800 p-1 rounded text-[10px] font-bold">💸 ${s.memo || ''} -${(s.cost || 0).toLocaleString()}원</div>`);
 
                 const div = document.createElement('div');
                 div.className = "p-3 min-h-[300px] space-y-2 bg-white cursor-pointer hover:bg-slate-50/50 text-left";
@@ -879,27 +891,54 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
                             <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-200/50 space-y-1.5">
-                                <h4 class="text-xs font-black text-slate-700">🏋️ 피트니스 및 운동 기입 (콤마 구분)</h4>
-                                <input type="text" id="form-workouts-csv" value="${data.workouts.join(', ')}" placeholder="예: 벤치프레스 5세트, 유산소 30분" class="w-full p-2 border border-slate-200 rounded-lg bg-white text-xs font-bold">
+                                <h4 class="text-xs font-black text-slate-700">🏋️ 피트니스 및 운동</h4>
+                                <div class="flex gap-1">
+                                    <input type="text" id="form-workout-text" placeholder="예: 벤치프레스 5세트" class="flex-1 p-1 border border-slate-200 rounded text-[11px] font-bold focus:outline-none bg-white">
+                                    <button type="button" onclick="addInlineWorkout()" class="px-2 bg-slate-900 text-white rounded text-[10px] font-black shrink-0">추가</button>
+                                </div>
+                                <div id="form-workouts-preview" class="space-y-1 max-h-24 overflow-y-auto pt-1 border-t border-dashed border-slate-100"></div>
                             </div>
                             <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-200/50 space-y-1.5">
-                                <h4 class="text-xs font-black text-slate-700">📅 개별 스케줄 기입 (콤마 구분)</h4>
-                                <input type="text" id="form-schedules-csv" value="${data.schedules.join(', ')}" placeholder="예: 저녁 외식 약속, 미팅 세션" class="w-full p-2 border border-slate-200 rounded-lg bg-white text-xs font-bold">
+                                <h4 class="text-xs font-black text-slate-700">📅 개별 스케줄 기입</h4>
+                                <div class="flex gap-1">
+                                    <input type="text" id="form-schedule-text" placeholder="예: 저녁 외식 약속" class="flex-1 p-1 border border-slate-200 rounded text-[11px] font-bold focus:outline-none bg-white">
+                                    <button type="button" onclick="addInlineSchedule()" class="px-2 bg-slate-900 text-white rounded text-[10px] font-black shrink-0">추가</button>
+                                </div>
+                                <div id="form-schedules-preview" class="space-y-1 max-h-24 overflow-y-auto pt-1 border-t border-dashed border-slate-100"></div>
+                            </div>
+                            <div class="bg-slate-50/60 p-2.5 rounded-xl border border-slate-200/50 space-y-1.5">
+                                <h4 class="text-xs font-black text-slate-700">💸 장부 지출 연동</h4>
+                                <div class="flex gap-1">
+                                    <input type="text" id="form-spend-memo" placeholder="내역" class="flex-1 p-1 border border-slate-200 rounded text-[11px] font-bold focus:outline-none bg-white">
+                                    <input type="number" id="form-spend-cost" placeholder="금액" class="w-20 p-1 border border-slate-200 rounded text-[11px] font-bold focus:outline-none bg-white">
+                                    <button type="button" onclick="addInlineSpend()" class="px-2 bg-slate-900 text-white rounded text-[10px] font-black shrink-0">추가</button>
+                                </div>
+                                <div id="form-spends-preview" class="space-y-1 max-h-24 overflow-y-auto pt-1 border-t border-dashed border-slate-100"></div>
                             </div>
                         </div>
                     </form>
                 `;
                 renderInlineFormTodoListPreview();
+                renderInlineFormWorkoutsPreview();
+                renderInlineFormSchedulesPreview();
+                renderInlineFormSpendsPreview();
             }
         }
 
         function toggleEditorMode(isEdit) {
             if (isEdit) {
-                pendingInlineTodos = JSON.parse(JSON.stringify(getCurrentDayData().study_todos));
+                const d = getCurrentDayData();
+                pendingInlineTodos = JSON.parse(JSON.stringify(d.study_todos));
+                pendingInlineSchedules = [...d.schedules];
+                pendingInlineWorkouts = [...d.workouts];
+                pendingInlineSpends = JSON.parse(JSON.stringify(d.spends));
             } else {
                 pendingInlineTodos = [];
+                pendingInlineSchedules = [];
+                pendingInlineWorkouts = [];
+                pendingInlineSpends = [];
             }
             inlineEditorIsEditMode = isEdit;
             renderInlineEditorForm();
@@ -944,6 +983,95 @@
             renderInlineFormTodoListPreview();
         }
 
+        function renderInlineFormWorkoutsPreview() {
+            const box = document.getElementById('form-workouts-preview');
+            if (!box) return;
+            box.innerHTML = "";
+            if (pendingInlineWorkouts.length === 0) {
+                box.innerHTML = `<span class="text-[10px] text-slate-400 italic">추가된 운동 없음</span>`;
+                return;
+            }
+            pendingInlineWorkouts.forEach((w, i) => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-700";
+                div.innerHTML = `<span class="truncate">💪 ${w}</span><button type="button" onclick="deleteInlineWorkout(${i})" class="text-rose-500 hover:text-rose-700 font-bold px-1">✕</button>`;
+                box.appendChild(div);
+            });
+        }
+
+        function addInlineWorkout() {
+            const inp = document.getElementById('form-workout-text');
+            if (!inp || inp.value.trim() === "") return;
+            pendingInlineWorkouts.push(inp.value.trim());
+            inp.value = "";
+            renderInlineFormWorkoutsPreview();
+        }
+
+        function deleteInlineWorkout(idx) {
+            pendingInlineWorkouts.splice(idx, 1);
+            renderInlineFormWorkoutsPreview();
+        }
+
+        function renderInlineFormSchedulesPreview() {
+            const box = document.getElementById('form-schedules-preview');
+            if (!box) return;
+            box.innerHTML = "";
+            if (pendingInlineSchedules.length === 0) {
+                box.innerHTML = `<span class="text-[10px] text-slate-400 italic">추가된 스케줄 없음</span>`;
+                return;
+            }
+            pendingInlineSchedules.forEach((s, i) => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-700";
+                div.innerHTML = `<span class="truncate">📌 ${s}</span><button type="button" onclick="deleteInlineSchedule(${i})" class="text-rose-500 hover:text-rose-700 font-bold px-1">✕</button>`;
+                box.appendChild(div);
+            });
+        }
+
+        function addInlineSchedule() {
+            const inp = document.getElementById('form-schedule-text');
+            if (!inp || inp.value.trim() === "") return;
+            pendingInlineSchedules.push(inp.value.trim());
+            inp.value = "";
+            renderInlineFormSchedulesPreview();
+        }
+
+        function deleteInlineSchedule(idx) {
+            pendingInlineSchedules.splice(idx, 1);
+            renderInlineFormSchedulesPreview();
+        }
+
+        function renderInlineFormSpendsPreview() {
+            const box = document.getElementById('form-spends-preview');
+            if (!box) return;
+            box.innerHTML = "";
+            if (pendingInlineSpends.length === 0) {
+                box.innerHTML = `<span class="text-[10px] text-slate-400 italic">추가된 지출 없음</span>`;
+                return;
+            }
+            pendingInlineSpends.forEach((s, i) => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-700";
+                div.innerHTML = `<span class="truncate">💸 ${s.memo} -${(s.cost || 0).toLocaleString()}원</span><button type="button" onclick="deleteInlineSpend(${i})" class="text-rose-500 hover:text-rose-700 font-bold px-1">✕</button>`;
+                box.appendChild(div);
+            });
+        }
+
+        function addInlineSpend() {
+            const memo = document.getElementById('form-spend-memo');
+            const cost = document.getElementById('form-spend-cost');
+            if (!memo || !cost || memo.value.trim() === "" || !cost.value) return;
+            pendingInlineSpends.push({ memo: memo.value.trim(), cost: parseInt(cost.value) || 0 });
+            memo.value = "";
+            cost.value = "";
+            renderInlineFormSpendsPreview();
+        }
+
+        function deleteInlineSpend(idx) {
+            pendingInlineSpends.splice(idx, 1);
+            renderInlineFormSpendsPreview();
+        }
+
         async function toggleStudyTodoInline(todoId, isChecked) {
             const data = getCurrentDayData();
             const updatedTodos = data.study_todos.map(t => t.id === todoId ? { ...t, checked: isChecked } : t);
@@ -971,19 +1099,16 @@
             const morning = document.getElementById('form-meal-m').value.trim();
             const lunch = document.getElementById('form-meal-l').value.trim();
             const dinner = document.getElementById('form-meal-d').value.trim();
-            const workouts = document.getElementById('form-workouts-csv').value.split(',').map(s => s.trim()).filter(Boolean);
-            const schedules = document.getElementById('form-schedules-csv').value.split(',').map(s => s.trim()).filter(Boolean);
 
-            const existing = getCurrentDayData();
             const payload = {
                 user_id: currentActiveUserId,
                 log_date: currentSelectedDateStr,
                 diet_am_w: amVal,
                 diet_pm_w: pmVal,
                 meals: { morning, lunch, dinner },
-                workouts,
-                schedules,
-                spends: existing.spends,
+                workouts: pendingInlineWorkouts,
+                schedules: pendingInlineSchedules,
+                spends: pendingInlineSpends,
                 study_todos: pendingInlineTodos
             };
 
@@ -992,6 +1117,9 @@
 
             inlineEditorIsEditMode = false;
             pendingInlineTodos = [];
+            pendingInlineSchedules = [];
+            pendingInlineWorkouts = [];
+            pendingInlineSpends = [];
             await refreshAllServerData();
             renderCalendarMaster();
             renderInlineEditorForm();
