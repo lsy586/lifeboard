@@ -475,7 +475,7 @@
 
             if(!name || !password) return;
 
-            const { error } = await supabase
+            const { error } = await sb
                 .from('crew_users')
                 .insert([{ name, password, goals: ["새로운 라이프 크루 목표 수립"], base_asset: 0, salaries: {} }]);
 
@@ -753,7 +753,7 @@
                 study_todos: existingLog ? existingLog.study_todos || [] : []
             };
 
-            const { error } = await supabase
+            const { error } = await sb
                 .from('daily_life_logs')
                 .upsert(payload, { onConflict: 'user_id, log_date' });
 
@@ -785,7 +785,7 @@
 
             if (!name) return;
 
-            const { error } = await supabase
+            const { error } = await sb
                 .from('study_categories')
                 .insert([{ user_id: currentActiveUserId, name, exam_date }]);
 
