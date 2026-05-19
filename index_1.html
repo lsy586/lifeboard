@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>크루 라이프보드 시스템 (Supabase 연동)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #fcfaf7; font-family: system-ui, -apple-system, sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .theme-orange { color: #f26631; }
+        .bg-theme-orange { background-color: #f26631; }
+        .bg-theme-cream { background-color: #fff6f0; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-2 sm:p-4 md:p-6 text-slate-800">
+
+    <div id="page-main-dashboard" class="w-full max-w-6xl view-page">
+        <header class="mb-8 text-center md:text-left flex flex-col md:flex-row justify-between items-center border-b border-slate-200 pb-5 gap-4">
+            <div>
+                <h1 class="text-3xl font-black tracking-tight flex items-center gap-2 justify-center md:justify-start">
+                    <span class="bg-theme-orange text-white px-2 py-0.5 rounded-lg text-xl">Mariela</span> 라이프보드
+                </h1>
+            </div>
+            <div class="flex gap-2">
+                <span class="w-4 h-4 rounded-full bg-theme-orange block"></span>
+                <span class="w-4 h-4 rounded-full bg-[#1b4d4f] block"></span>
+                <span class="w-4 h-4 rounded-full bg-[#fce068] block"></span>
+            </div>
+        </header>
+
+        <div class="space-y-6" id="main-crew-list">
+            <div class="text-center py-10 text-sm font-bold text-slate-400">라이프 크루 데이터를 로딩 중입니다...</div>
+        </div>
+
+        <div class="mt-8 flex justify-center">
+            <button onclick="openModal('modal-add-friend')" class="flex items-center gap-2 px-6 py-3 bg-[#1b4d4f] text-white font-bold rounded-xl text-xs hover:opacity-90 transition shadow-sm">
+                <i class="fa-solid fa-user-plus"></i> 새로운 크루 참여시키기 (+)
+            </button>
+        </div>
+    </div>
+
+    <div id="page-personal-workspace" class="w-full max-w-7xl view-page hidden bg-white rounded-3xl border border-slate-200/80 shadow-xl flex flex-col md:flex-row overflow-hidden min-h-[85vh]">
+        
+        <aside class="w-full md:w-56 bg-[#1b4d4f] text-slate-200 p-4 flex flex-col justify-between border-r border-slate-100 shrink-0">
+            <div>
+                <div class="flex items-center justify-between border-b border-[#245d60] pb-4 mb-5">
+                    <div class="truncate">
+                        <h3 class="text-base font-black text-white flex items-center gap-2 truncate">
+                            <i class="fa-solid fa-circle-user text-slate-300"></i> <span id="workspace-user-title">-</span>
+                        </h3>
+                    </div>
+                    <button onclick="goToMainDashboard()" class="px-2.5 py-1.5 bg-[#245d60] hover:bg-[#2d7074] text-white rounded-xl text-[11px] font-bold transition shrink-0">
+                        나가기
+                    </button>
+                </div>
+
+                <nav class="space-y-1 text-left">
+                    <button onclick="switchTab('tab-calendar')" id="btn-tab-calendar" class="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl bg-theme-orange text-white transition-all text-left">
+                        <i class="fa-solid fa-calendar-days w-4 text-left"></i> 5월 캘린더
+                    </button>
+                    <button onclick="switchTab('tab-study')" id="btn-tab-study" class="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl hover:bg-[#245d60] transition-all text-slate-300 text-left">
+                        <i class="fa-solid fa-book-open w-4 text-left"></i> 공부계획 & 디데이
+                    </button>
+                    <button onclick="switchTab('tab-diet')" id="btn-tab-diet" class="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl hover:bg-[#245d60] transition-all text-slate-300 text-left">
+                        <i class="fa-solid fa-dumbbell w-4 text-left"></i> 피트니스 & 식단
+                    </button>
+                    <button onclick="switchTab('tab-schedule-etc')" id="btn-tab-schedule-etc" class="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl hover:bg-[#245d60] transition-all text-slate-300 text-left">
+                        <i class="fa-solid fa-clock w-4 text-left"></i> 그외 일정 마스터
+                    </button>
+                    <button onclick="switchTab('tab-account')" id="btn-tab-account" class="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl hover:bg-[#245d60] transition-all text-slate-300 text-left">
+                        <i class="fa-solid fa-wallet w-4 text-left"></i> 가계부 자산관리
+                    </button>
+                </nav>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-3 sm:p-6 overflow-y-auto no-scrollbar bg-[#faf9f6]">
+            
+            <div id="tab-calendar" class="tab-content space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200/60 shadow-xs">
+                    <h2 class="text-lg font-black text-slate-800 shrink-0" id="calendar-header-title">5월 캘린더</h2>
+                    <div class="flex items-center bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full shrink-0 whitespace-nowrap no-scrollbar">
+                        <button onclick="switchToCalendarMode('month')" id="btn-mode-month" class="px-3 py-1.5 text-[11px] font-black rounded-lg bg-white text-slate-800 shadow-xs border border-slate-200/50 inline-block">월 (확대뷰)</button>
+                        <button onclick="switchToCalendarMode('week', 1)" id="btn-mode-w1" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block">1주차</button>
+                        <button onclick="switchToCalendarMode('week', 2)" id="btn-mode-w2" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block">2주차</button>
+                        <button onclick="switchToCalendarMode('week', 3)" id="btn-mode-w3" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block">3주차</button>
+                        <button onclick="switchToCalendarMode('week', 4)" id="btn-mode-w4" class="px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block">4주차</button>
+                    </div>
+                </div>
+
+                <div id="box-month-view" class="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-4">
+                    <div class="grid grid-cols-7 text-center font-black text-xs text-slate-400 uppercase py-2 border-b border-slate-100">
+                        <div class="text-red-500">SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div class="text-blue-500">SAT</div>
+                    </div>
+                    <div id="month-calendar-grid" class="grid grid-cols-7 gap-2 min-h-[500px]"></div>
+                </div>
+
+                <div id="box-week-view" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                        <span class="font-black text-slate-800 text-sm" id="week-view-title">1주 스케줄</span>
+                        <div id="week-header-dday-zone" class="text-xs font-black text-theme-orange"></div>
+                    </div>
+                    <div class="w-full bg-slate-100 grid grid-cols-7 text-center font-black text-[11px] text-slate-500 border-b border-slate-200 py-2">
+                        <div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="text-blue-600">토</div><div class="text-red-600">일</div>
+                    </div>
+                    <div id="week-days-grid" class="w-full grid grid-cols-7 bg-white divide-x divide-slate-100"></div>
+                </div>
+
+                <div id="panel-day-inline-editor" class="hidden bg-white rounded-2xl border-2 border-theme-orange p-4 shadow-lg space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                        <h3 class="text-sm font-black text-slate-800">📅 <span id="inline-date-title">-</span> 상세 관리 보드</h3>
+                        <div class="flex gap-1.5" id="editor-mode-toggle-buttons"></div>
+                    </div>
+                    <div id="inline-editor-main-form" class="space-y-4"></div>
+                </div>
+            </div>
+
+            <div id="tab-study" class="tab-content space-y-4 hidden">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm w-full">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
+                        <div>
+                            <h2 class="text-base font-black text-slate-800 flex items-center gap-1.5">
+                                <i class="fa-solid fa-book-open text-theme-orange"></i> 등록된 공부 과목 및 시험 속성 목록
+                            </h2>
+                            <p class="text-[11px] text-slate-400 font-medium mt-0.5">설정된 과목들의 디데이를 한눈에 추적합니다.</p>
+                        </div>
+                        <button onclick="toggleStudyAddForm()" class="flex items-center gap-1.5 px-4 py-2 bg-theme-orange text-white text-xs font-black rounded-xl hover:opacity-90 transition shadow-xs shrink-0">
+                            <i class="fa-solid fa-plus"></i> 공부 과목 및 시험 목표 추가
+                        </button>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <div id="study-category-tags-container" class="flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div id="form-study-category-add" class="hidden mt-4 pt-4 border-t-2 border-dashed border-slate-100 bg-slate-50/50 p-4 rounded-xl transition-all">
+                        <h3 class="text-xs font-black text-slate-700 mb-3"><i class="fa-solid fa-pen-to-square text-theme-orange"></i> 새 과목 속성 등록</h3>
+                        <form onsubmit="addStudyCategoryCustom(event)" class="space-y-3 max-w-md">
+                            <div>
+                                <input type="text" id="input-new-study-cat" placeholder="과목명을 입력하세요 (예: 영어, 알고리즘)" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white focus:outline-none focus:border-theme-orange" required>
+                            </div>
+                            <div class="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200">
+                                <label for="input-new-study-exam-date" class="text-xs font-black text-slate-500 shrink-0">시험 날짜 :</label>
+                                <input type="date" id="input-new-study-exam-date" class="flex-1 p-1 bg-transparent text-xs font-bold focus:outline-none text-slate-700">
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="toggleStudyAddForm()" class="flex-1 py-2 bg-slate-200 text-slate-600 font-black text-xs rounded-xl hover:opacity-90 transition">취소</button>
+                                <button type="submit" class="flex-1 py-2 bg-theme-orange text-white font-black text-xs rounded-xl hover:opacity-90 transition shadow-xs">등록 완료</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
+                        <div class="grid grid-cols-7 text-center text-[10px] font-bold text-slate-400 border-b border-slate-100 pb-1 mb-1">
+                            <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+                        </div>
+                        <div id="study-mini-calendar-grid" class="grid grid-cols-7 gap-1"></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs lg:col-span-2 flex flex-col justify-between gap-4">
+                        <div><h3 class="text-sm font-black text-slate-800">선택된 날짜: <span id="study-selected-date-label" class="theme-orange">-</span></h3></div>
+                        <div class="space-y-2 border-t border-slate-100 pt-3">
+                            <select id="select-study-category-dropdown" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"></select>
+                            <input type="text" id="input-study-todo-text" placeholder="과제 세부 실행내용 기입" class="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:border-theme-orange">
+                            <button onclick="addStudyTodoFromTab()" class="w-full py-2 bg-[#1b4d4f] text-white font-black text-[11px] rounded-lg hover:opacity-90 transition">할 일 추가</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                    <h3 class="text-xs font-black text-slate-500 mb-2">선택 날짜의 공부 라인업</h3>
+                    <div id="study-tab-master-list-box" class="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar"></div>
+                </div>
+            </div>
+
+            <div id="tab-diet" class="tab-content space-y-4 hidden">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                    <h2 class="text-base font-black text-slate-800 mb-2">🏃‍♂️ 최근 30일 체중 동향 리포트</h2>
+                    <div class="bg-slate-50 p-2 rounded-xl h-64 flex justify-center">
+                        <canvas id="dietWeightChart" class="w-full"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                    <h2 class="text-base font-black text-slate-800 mb-3">📋 일별 피트니스 및 식단 피드백 목록 (월~일 순차 요약)</h2>
+                    <div id="diet-weekly-summary-list" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <div id="tab-schedule-etc" class="tab-content space-y-4 hidden">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <h2 class="text-base font-black text-slate-800">📌 그외 일정 통합 관리 보드</h2>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="date" id="input-tab-etc-date" class="p-2 border border-slate-200 rounded-xl text-xs font-bold">
+                        <input type="text" id="input-tab-etc-text" placeholder="약속 장소 및 스케줄 내용 입력" class="flex-1 p-2 border border-slate-200 rounded-xl text-xs font-bold">
+                        <button onclick="addEtcScheduleFromTab()" class="px-4 py-2 bg-slate-900 text-white font-black text-xs rounded-xl hover:opacity-90">일정 추가</button>
+                    </div>
+                    <div id="etc-schedule-tab-master-list" class="space-y-2 pt-2"></div>
+                </div>
+            </div>
+
+            <div id="tab-account" class="tab-content space-y-4 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                        <h3 class="text-sm font-black text-slate-800">💰 보유 자산 가산 설정</h3>
+                        <div class="flex gap-2">
+                            <input type="number" id="input-asset-base" placeholder="현재 보유 시드머니 입력" class="flex-1 p-2 border border-slate-200 rounded-xl text-xs font-bold">
+                            <button onclick="saveBaseAsset()" class="px-4 bg-[#1b4d4f] text-white font-black text-xs rounded-xl">자산 설정</button>
+                        </div>
+                        <div class="flex gap-2">
+                            <select id="input-salary-month" class="p-2 border border-slate-200 rounded-xl text-xs font-bold">
+                                <option value="05">5월</option><option value="06">6월</option>
+                            </select>
+                            <input type="number" id="input-salary-amount" placeholder="월급액 입력" class="flex-1 p-2 border border-slate-200 rounded-xl text-xs font-bold">
+                            <button onclick="addSalary()" class="px-4 bg-theme-orange text-white font-black text-xs rounded-xl">월급날 추가</button>
+                        </div>
+                    </div>
+                    <div class="bg-[#1b4d4f] text-white p-4 rounded-2xl flex flex-col justify-between">
+                        <span class="text-xs font-bold text-slate-300">실시간 연동 추정 보유 자산 총액</span>
+                        <h2 class="text-2xl font-black text-right tracking-wide text-[#fce068] mt-4" id="label-total-asset">0원</h2>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <h2 class="text-base font-black text-slate-800">💸 가계부 일별 지출 입력 장부</h2>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="date" id="input-tab-acc-date" class="p-2 border border-slate-200 rounded-xl text-xs font-bold">
+                        <input type="text" id="input-tab-acc-text" placeholder="지출 내역 목적 기입" class="flex-1 p-2 border border-slate-200 rounded-xl text-xs font-bold">
+                        <input type="number" id="input-tab-acc-amount" placeholder="금액(원)" class="w-full sm:w-28 p-2 border border-slate-200 rounded-xl text-xs font-bold">
+                        <button onclick="addAccountSpendFromTab()" class="px-4 py-2 bg-emerald-700 text-white font-black text-xs rounded-xl hover:opacity-90">기입 적용</button>
+                    </div>
+                    <div class="overflow-x-auto text-xs pt-2">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-500 border-b border-slate-100 font-bold"><th class="p-2">일자</th><th class="p-2">지출 내용 사유</th><th class="p-2">금액</th><th class="p-2">삭제</th></tr>
+                            </thead>
+                            <tbody id="acc-tab-table-body" class="font-semibold text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-password-auth" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl">
+            <h3 class="text-sm font-black text-slate-800 mb-4">🔐 워크스페이스 보안 비밀번호</h3>
+            <form onsubmit="handlePasswordSubmit(event)" class="space-y-3">
+                <input type="hidden" id="input-auth-user-id">
+                <input type="password" id="input-crew-pwd" placeholder="비밀번호 입력" class="w-full p-2.5 border border-slate-200 rounded-xl font-black text-center tracking-widest focus:outline-none" required>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeModal('modal-password-auth')" class="flex-1 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl text-xs">취소</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-theme-orange text-white font-bold rounded-xl text-xs">인증 진입</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-add-friend" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-sm shadow-2xl">
+            <h3 class="text-sm font-black text-slate-800 mb-2">새로운 크루 등록</h3>
+            <form onsubmit="handleCreateFriend(event)" class="space-y-3">
+                <input type="text" id="add-friend-name" placeholder="멤버 이름" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none" required>
+                <input type="password" id="add-friend-password" placeholder="입장 비밀번호" class="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none" required>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeModal('modal-add-friend')" class="flex-1 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl text-xs">닫기</button>
+                    <button type="submit" class="flex-1 py-2.5 bg-slate-900 text-white font-bold rounded-xl text-xs">등록</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const TODAY_BASE_STR = "2026-05-19";
+        
+        // ⚠️ [중요] 자신의 실제 Supabase 프로젝트 API 키셋으로 치환하세요.
+        const SUPABASE_URL = "https://cuuhrquajxdotyakhnoc.supabase.co/rest/v1/";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN1dWhycXVhanhkb3R5YWtobm9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNjQxNzUsImV4cCI6MjA5NDY0MDE3NX0.OsJjaT1RtUMtgG0Za8kRzrEHpWBnPurAK7mvWy5s3KU";
+
+        const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+        // 글로벌 상태 제어 변수
+        let currentActiveUserId = null; 
+        let currentSelectedDateStr = "";
+        let currentCalendarMode = "month";
+        let currentSelectedWeekNum = 1;
+        let studyTabSelectedDateStr = TODAY_BASE_STR;
+        let inlineEditorIsEditMode = false;
+        let globalWeightChartInstance = null;
+
+        // 로컬 데이터 캐싱 객체
+        let cachedCrewUsers = [];
+        let cachedStudyCategories = [];
+        let cachedLifeLogs = [];
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (!supabase) {
+                alert("Supabase 클라이언트 초기화에 실패했습니다. 라이브러리 및 설정을 확인하세요.");
+                return;
+            }
+            await refreshAllServerData();
+            document.getElementById('input-tab-etc-date').value = TODAY_BASE_STR;
+            document.getElementById('input-tab-acc-date').value = TODAY_BASE_STR;
+        });
+
+        // 데이터 백엔드로부터 동기화 동적 수신
+        async function refreshAllServerData() {
+            try {
+                const { data: users, error: uErr } = await supabase.from('crew_users').select('*').order('id', { ascending: true });
+                if(uErr) throw uErr;
+                cachedCrewUsers = users || [];
+
+                const { data: cats, error: cErr } = await supabase.from('study_categories').select('*');
+                if(cErr) throw cErr;
+                cachedStudyCategories = cats || [];
+
+                const { data: logs, error: lErr } = await supabase.from('daily_life_logs').select('*');
+                if(lErr) throw lErr;
+                cachedLifeLogs = logs || [];
+
+                renderMainDashboard();
+            } catch (err) {
+                console.error("데이터 연동 장애: ", err.message);
+            }
+        }
+
+        function shiftDateStr(dateStr, days) {
+            const d = new Date(dateStr);
+            d.setDate(d.getDate() + days);
+            return d.toISOString().split('T')[0];
+        }
+
+        function calculateDDay(targetDateStr) {
+            if (!targetDateStr) return "";
+            const target = new Date(targetDateStr + "T00:00:00");
+            const today = new Date(TODAY_BASE_STR + "T00:00:00");
+            const diffTime = target - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays === 0) return "D-Day";
+            return diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
+        }
+
+        function renderMainDashboard() {
+            const container = document.getElementById('main-crew-list');
+            container.innerHTML = "";
+
+            if(cachedCrewUsers.length === 0) {
+                container.innerHTML = `<p class="text-center py-6 font-bold text-slate-400 text-xs">참여 중인 크루 멤버가 없습니다. 아래 버튼으로 추가해 보세요!</p>`;
+                return;
+            }
+
+            cachedCrewUsers.forEach(user => {
+                const dates = [
+                    { label: "어제", str: shiftDateStr(TODAY_BASE_STR, -1), style: "opacity-50 scale-98" },
+                    { label: "오늘", str: TODAY_BASE_STR, style: "ring-2 ring-theme-orange border-theme-orange shadow-md relative z-10 bg-orange-50/20" },
+                    { label: "내일", str: shiftDateStr(TODAY_BASE_STR, 1), style: "opacity-40 scale-95" }
+                ];
+
+                const userCats = cachedStudyCategories.filter(c => c.user_id === user.id);
+                let closestDDayText = "설정된 목표 시험 없음";
+                let minDays = Infinity;
+                
+                userCats.forEach(c => {
+                    if (c.exam_date) {
+                        const target = new Date(c.exam_date + "T00:00:00");
+                        const today = new Date(TODAY_BASE_STR + "T00:00:00");
+                        const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+                        if (diff >= 0 && diff < minDays) {
+                            minDays = diff;
+                            closestDDayText = `🔥 ${c.name} [${diff === 0 ? 'D-Day' : 'D-' + diff}]`;
+                        }
+                    }
+                });
+
+                let timelineBlocksHtml = "";
+                let todayProgressHtml = "";
+
+                dates.forEach(d => {
+                    const log = cachedLifeLogs.find(l => l.user_id === user.id && l.log_date === d.str);
+                    let todos = log ? log.study_todos || [] : [];
+                    let schedules = log ? log.schedules || [] : [];
+
+                    if (d.str === TODAY_BASE_STR) {
+                        const totalCount = todos.length;
+                        const checkedCount = todos.filter(t => t.checked).length;
+                        const percent = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
+                        todayProgressHtml = `
+                            <div class="mt-2 w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                                <div class="bg-theme-orange h-2.5 rounded-full transition-all" style="width: ${percent}%"></div>
+                            </div>
+                            <span class="text-[11px] text-theme-orange font-black mt-1 block">오늘 과제 완수율: ${percent}% (${checkedCount}/${totalCount})</span>
+                        `;
+                    }
+
+                    let itemRows = "";
+                    todos.forEach(t => {
+                        itemRows += `
+                            <div class="truncate text-[10px] font-bold ${t.checked ? 'text-slate-400 line-through' : 'text-slate-700'}">
+                                ${t.checked ? '✅' : '🍊'} [${t.category}] ${t.label}
+                            </div>
+                        `;
+                    });
+                    schedules.forEach(s => {
+                        itemRows += `<div class="truncate text-[10px] font-extrabold text-indigo-700">📌 [일정] ${s}</div>`;
+                    });
+
+                    if (itemRows === "") {
+                        itemRows = `<p class="text-[10px] italic text-slate-400">공부 & 일정 내역 없음</p>`;
+                    }
+
+                    timelineBlocksHtml += `
+                        <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs ${d.style}">
+                            <div class="flex justify-between items-center border-b pb-1 mb-1.5 border-slate-100">
+                                <span class="text-[11px] font-black text-slate-800">${d.label} (${d.str.slice(5)})</span>
+                            </div>
+                            <div class="space-y-1 overflow-hidden max-h-24 no-scrollbar">${itemRows}</div>
+                        </div>
+                    `;
+                });
+
+                // 누적 연동 추정 자산 계산
+                const userLogs = cachedLifeLogs.filter(l => l.user_id === user.id);
+                let totalSpend = 0;
+                userLogs.forEach(l => {
+                    if(l.spends) l.spends.forEach(s => totalSpend += (s.cost || 0));
+                });
+                let salaryTotal = 0;
+                if(user.salaries) {
+                    Object.values(user.salaries).forEach(amt => salaryTotal += parseInt(amt || 0));
+                }
+                const liveAsset = (user.base_asset || 0) + salaryTotal - totalSpend;
+
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-3xl p-5 shadow-xs hover:border-theme-orange transition";
+                card.innerHTML = `
+                    <div class="flex flex-col lg:flex-row gap-6">
+                        <div class="lg:w-1/4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-100 pb-4 lg:pb-0 lg:pr-4">
+                            <div onclick="triggerPasswordAuth(${user.id})" class="cursor-pointer group">
+                                <span class="text-[9px] bg-[#1b4d4f] text-white font-black px-2 py-0.5 rounded-sm">CREW MEMBER</span>
+                                <h2 class="text-xl font-black text-slate-800 mt-2 group-hover:text-theme-orange flex items-center gap-2">
+                                    ${user.name} <i class="fa-solid fa-right-to-bracket text-sm opacity-50 group-hover:opacity-100"></i>
+                                </h2>
+                                <p class="text-[11px] text-slate-500 font-semibold mt-1 italic">목표: ${user.goals && user.goals[0] ? user.goals[0] : '새로운 라이프 크루 목표 수립'}</p>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-slate-100/70 space-y-2">
+                                <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <span class="text-base">🎯</span> <span class="text-slate-400 font-medium">가장 임박한 시험:</span> <span class="font-black text-rose-600">${closestDDayText}</span>
+                                </div>
+                                <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <span class="text-base">💰</span> <span class="text-slate-400 font-medium">추정 보유 자산:</span> <span class="font-black text-emerald-700">${liveAsset.toLocaleString()}원</span>
+                                </div>
+                                ${todayProgressHtml}
+                            </div>
+                        </div>
+                        <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            ${timelineBlocksHtml}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function handleCreateFriend(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('add-friend-name');
+            const pwdInput = document.getElementById('add-friend-password');
+            const name = nameInput.value.trim();
+            const password = pwdInput.value;
+
+            if(!name || !password) return;
+
+            const { error } = await supabase
+                .from('crew_users')
+                .insert([{ name, password, goals: ["새로운 라이프 크루 목표 수립"], base_asset: 0, salaries: {} }]);
+
+            if (error) {
+                alert("회원 등록 오류 (이미 존재하는 이름 등): " + error.message);
+                return;
+            }
+
+            nameInput.value = ""; pwdInput.value = "";
+            closeModal('modal-add-friend');
+            await refreshAllServerData();
+        }
+
+        function triggerPasswordAuth(userId) {
+            document.getElementById('input-auth-user-id').value = userId;
+            document.getElementById('input-crew-pwd').value = "";
+            openModal('modal-password-auth');
+        }
+
+        function handlePasswordSubmit(e) {
+            e.preventDefault();
+            const uid = parseInt(document.getElementById('input-auth-user-id').value);
+            const pwd = document.getElementById('input-crew-pwd').value;
+            const targetUser = cachedCrewUsers.find(u => u.id === uid);
+
+            if(targetUser && targetUser.password === pwd) {
+                closeModal('modal-password-auth');
+                enterPersonalWorkspace(uid);
+            } else {
+                alert("보안인증 실패: 패스워드가 다릅니다.");
+            }
+        }
+
+        function enterPersonalWorkspace(userId) {
+            currentActiveUserId = userId;
+            const user = cachedCrewUsers.find(u => u.id === userId);
+            document.getElementById('workspace-user-title').innerText = user.name;
+
+            document.getElementById('page-main-dashboard').classList.add('hidden');
+            document.getElementById('page-personal-workspace').classList.remove('hidden');
+
+            switchTab('tab-calendar');
+        }
+
+        function goToMainDashboard() {
+            currentActiveUserId = null;
+            document.getElementById('page-personal-workspace').classList.add('hidden');
+            document.getElementById('page-main-dashboard').classList.remove('hidden');
+            refreshAllServerData();
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            const tabIdsInfo = ['tab-calendar', 'tab-study', 'tab-diet', 'tab-schedule-etc', 'tab-account'];
+            tabIdsInfo.forEach(t => {
+                const btn = document.getElementById(`btn-${t}`);
+                if(!btn) return;
+                if (t === tabId) btn.className = "w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl bg-theme-orange text-white text-left shadow-sm";
+                else btn.className = "w-full flex items-center gap-2 px-3 py-2.5 text-xs font-bold rounded-xl hover:bg-[#245d60] transition-all text-slate-300 text-left";
+            });
+
+            if (tabId === 'tab-calendar') renderCalendarMaster();
+            else if (tabId === 'tab-study') loadStudyTabPlan();
+            else if (tabId === 'tab-diet') loadDietTabAnalysis();
+            else if (tabId === 'tab-schedule-etc') loadEtcScheduleTabMaster();
+            else if (tabId === 'tab-account') loadAccountTabLedger();
+        }
+
+        // ==========================================
+        // 캘린더 내부 로직 및 헬퍼 함수
+        // ==========================================
+        function getMay2026DaysInfo() {
+            const days = [];
+            // 2026년 5월 1일은 금요일 (이전 빈 칸 5개 채우기용 데이터 설정 구조화)
+            for(let i=26; i<=30; i++) {
+                days.push({ dayNum: i, fullDateStr: `2026-04-${i}`, isCurrentMonth: false });
+            }
+            for(let i=1; i<=31; i++) {
+                const dayStr = i < 10 ? '0' + i : i;
+                days.push({ dayNum: i, fullDateStr: `2026-05-${dayStr}`, isCurrentMonth: true });
+            }
+            for(let i=1; i<=6; i++) {
+                days.push({ dayNum: i, fullDateStr: `2026-06-0${i}`, isCurrentMonth: false });
+            }
+            return days.slice(0, 42); 
+        }
+
+        function renderCalendarMaster() {
+            if(currentCalendarMode === 'month') {
+                document.getElementById('box-month-view').classList.remove('hidden');
+                document.getElementById('box-week-view').classList.add('hidden');
+                renderMonthCalendarView();
+            } else {
+                document.getElementById('box-month-view').classList.add('hidden');
+                document.getElementById('box-week-view').classList.remove('hidden');
+                renderWeekCalendarView();
+            }
+            updateCalendarUIButtons();
+        }
+
+        function switchToCalendarMode(mode, weekNum = 1) {
+            currentCalendarMode = mode;
+            currentSelectedWeekNum = weekNum;
+            renderCalendarMaster();
+        }
+
+        function updateCalendarUIButtons() {
+            const btnModeIds = ['month', 'w1', 'w2', 'w3', 'w4'];
+            btnModeIds.forEach(id => {
+                const btn = document.getElementById(`btn-mode-${id}`);
+                if(!btn) return;
+                btn.className = "px-2.5 py-1.5 text-[11px] font-bold rounded-lg text-slate-600 hover:bg-white inline-block";
+            });
+
+            const activeId = currentCalendarMode === 'month' ? 'month' : `w${currentSelectedWeekNum}`;
+            const activeBtn = document.getElementById(`btn-mode-${activeId}`);
+            if(activeBtn) {
+                activeBtn.className = "px-3 py-1.5 text-[11px] font-black rounded-lg bg-white text-slate-800 shadow-xs border border-slate-200/50 inline-block";
+            }
+        }
+
+        function renderMonthCalendarView() {
+            const grid = document.getElementById('month-calendar-grid');
+            grid.innerHTML = "";
+            const allDays = getMay2026DaysInfo();
+
+            allDays.forEach(day => {
+                const div = document.createElement('div');
+                div.className = `p-2 border border-slate-100 rounded-xl min-h-[90px] flex flex-col justify-between cursor-pointer transition text-left ${day.isCurrentMonth ? 'bg-white hover:border-theme-orange' : 'bg-slate-50/70 opacity-40'}`;
+                
+                if(day.fullDateStr === TODAY_BASE_STR) {
+                    div.className += " ring-2 ring-theme-orange bg-orange-50/10";
+                }
+
+                div.onclick = () => selectDateForInlineEditor(day.fullDateStr);
+
+                const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === day.fullDateStr);
+                let badgeRows = "";
+                if(log) {
+                    if (log.study_todos && log.study_todos.length > 0) badgeRows += `<span class="px-1 text-[9px] bg-orange-100 text-theme-orange font-black rounded">📚 공부 ${log.study_todos.length}</span>`;
+                    if (log.schedules && log.schedules.length > 0) badgeRows += `<span class="px-1 text-[9px] bg-indigo-100 text-indigo-700 font-black rounded">📌 일정 ${log.schedules.length}</span>`;
+                    if (log.diet_am_w || log.diet_pm_w) badgeRows += `<span class="px-1 text-[9px] bg-emerald-100 text-emerald-700 font-black rounded">⚖️ 체중기록</span>`;
+                }
+
+                div.innerHTML = `
+                    <span class="text-xs font-black text-slate-700">${day.dayNum}</span>
+                    <div class="flex flex-col gap-0.5 mt-1 overflow-hidden shrink-0">${badgeRows}</div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function renderWeekCalendarView() {
+            const grid = document.getElementById('week-days-grid');
+            grid.innerHTML = "";
+            document.getElementById('week-view-title').innerText = `2026년 5월 [${currentSelectedWeekNum}주차] 타임라인 스케줄`;
+
+            const allDays = getMay2026DaysInfo();
+            // 월요일부터 시작하는 주차 슬라이싱 매핑
+            const startIdx = (currentSelectedWeekNum - 1) * 7 + 4; 
+            const targetWeekDays = allDays.slice(startIdx, startIdx + 7);
+
+            targetWeekDays.forEach(day => {
+                const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === day.fullDateStr);
+                let todos = log ? log.study_todos || [] : [];
+                let schedules = log ? log.schedules || [] : [];
+                let spends = log ? log.spends || [] : [];
+
+                let listHtml = "";
+                schedules.forEach(s => listHtml += `<div class="bg-indigo-50 border-l-2 border-indigo-500 text-indigo-800 p-1 rounded text-[10px] font-bold">📌 ${s}</div>`);
+                todos.forEach(t => listHtml += `<div class="bg-orange-50 border-l-2 border-orange-500 text-orange-800 p-1 rounded text-[10px] font-bold">${t.checked ? '✅' : '📚'} [${t.category}] ${t.label}</div>`);
+                spends.forEach(s => listHtml += `<div class="bg-rose-50 border-l-2 border-rose-500 text-rose-800 p-1 rounded text-[10px] font-bold">💸 -${s.cost.toLocaleString()}원</div>`);
+
+                const div = document.createElement('div');
+                div.className = "p-3 min-h-[300px] space-y-2 bg-white cursor-pointer hover:bg-slate-50/50 text-left";
+                if(day.fullDateStr === TODAY_BASE_STR) div.className += " bg-orange-50/20 font-black";
+
+                div.onclick = () => selectDateForInlineEditor(day.fullDateStr);
+                div.innerHTML = `
+                    <div class="border-b pb-1 flex justify-between items-center">
+                        <span class="text-xs font-black text-slate-800">${day.dayNum}일 (${day.fullDateStr.slice(5)})</span>
+                    </div>
+                    <div class="space-y-1.5 overflow-y-auto max-h-[240px] no-scrollbar">${listHtml}</div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        function selectDateForInlineEditor(dateStr) {
+            currentSelectedDateStr = dateStr;
+            document.getElementById('panel-day-inline-editor').classList.remove('hidden');
+            document.getElementById('inline-date-title').innerText = dateStr;
+            renderInlineEditorForm();
+            document.getElementById('panel-day-inline-editor').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function renderInlineEditorForm() {
+            const container = document.getElementById('inline-editor-main-form');
+            const toggleZone = document.getElementById('editor-mode-toggle-buttons');
+
+            const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === currentSelectedDateStr);
+            const morningW = log ? log.diet_am_w || "" : "";
+            const eveningW = log ? log.diet_pm_w || "" : "";
+            const meals = log && log.meals ? log.meals : { morning: "", lunch: "", dinner: "" };
+
+            if(!inlineEditorIsEditMode) {
+                toggleZone.innerHTML = `<button onclick="toggleEditorMode(true)" class="px-3 py-1 bg-slate-900 text-white font-black text-xs rounded-lg">⚙️ 인라인 데이터 편집 및 작성</button>`;
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-bold text-slate-700 bg-slate-50 p-4 rounded-xl">
+                        <div class="space-y-1">
+                            <p class="text-slate-400">⚖️ 피트니스 체중 기록</p>
+                            <div>☀️ 오전 공복 체중: <span class="text-slate-900 font-black">${morningW ? morningW + 'kg' : '미기입'}</span></div>
+                            <div>🌙 오후 마감 체중: <span class="text-slate-900 font-black">${eveningW ? eveningW + 'kg' : '미기입'}</span></div>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-slate-400">🥗 오늘 식단 기록 리포트</p>
+                            <div>아침: ${meals.morning || '패스'} | 점심: ${meals.lunch || '패스'} | 저녁: ${meals.dinner || '패스'}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                toggleZone.innerHTML = `
+                    <button onclick="toggleEditorMode(false)" class="px-3 py-1 bg-slate-200 text-slate-600 font-black text-xs rounded-lg">취소</button>
+                    <button onclick="saveInlineEditorData()" class="px-3 py-1 bg-theme-orange text-white font-black text-xs rounded-lg shadow-sm">💾 저장 반영</button>
+                `;
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 border p-4 rounded-2xl text-xs font-bold">
+                        <div class="space-y-3">
+                            <h4 class="font-black text-slate-800 border-b pb-1">⚖️ 체중 입력 (kg)</h4>
+                            <div class="flex gap-2 items-center">
+                                <span>오전(AM):</span>
+                                <input type="number" step="0.1" id="edit-am-weight" value="${morningW}" class="p-1.5 border rounded-lg bg-white w-24">
+                                <span>오후(PM):</span>
+                                <input type="number" step="0.1" id="edit-pm-weight" value="${eveningW}" class="p-1.5 border rounded-lg bg-white w-24">
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-black text-slate-800 border-b pb-1">🥗 식단 기입 가이드</h4>
+                            <div class="space-y-1">
+                                <input type="text" id="edit-meal-morning" value="${meals.morning || ''}" placeholder="아침 식단 사유" class="w-full p-1.5 border rounded-lg bg-white">
+                                <input type="text" id="edit-meal-lunch" value="${meals.lunch || ''}" placeholder="점심 식단 사유" class="w-full p-1.5 border rounded-lg bg-white">
+                                <input type="text" id="edit-meal-dinner" value="${meals.dinner || ''}" placeholder="저녁 식단 사유" class="w-full p-1.5 border rounded-lg bg-white">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function toggleEditorMode(isEdit) {
+            inlineEditorIsEditMode = isEdit;
+            renderInlineEditorForm();
+        }
+
+        async function saveInlineEditorData() {
+            const amVal = parseFloat(document.getElementById('edit-am-weight').value) || null;
+            const pmVal = parseFloat(document.getElementById('edit-pm-weight').value) || null;
+            const morning = document.getElementById('edit-meal-morning').value.trim();
+            const lunch = document.getElementById('edit-meal-lunch').value.trim();
+            const dinner = document.getElementById('edit-meal-dinner').value.trim();
+
+            const existingLog = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === currentSelectedDateStr);
+            
+            const payload = {
+                user_id: currentActiveUserId,
+                log_date: currentSelectedDateStr,
+                diet_am_w: amVal,
+                diet_pm_w: pmVal,
+                meals: { morning, lunch, dinner },
+                workouts: existingLog ? existingLog.workouts || [] : [],
+                schedules: existingLog ? existingLog.schedules || [] : [],
+                spends: existingLog ? existingLog.spends || [] : [],
+                study_todos: existingLog ? existingLog.study_todos || [] : []
+            };
+
+            const { error } = await supabase
+                .from('daily_life_logs')
+                .upsert(payload, { onConflict: 'user_id, log_date' });
+
+            if (error) {
+                alert("인라인 편집 데이터 백엔드 동기화 실패: " + error.message);
+                return;
+            }
+
+            inlineEditorIsEditMode = false;
+            await refreshAllServerData();
+            renderCalendarMaster();
+            selectDateForInlineEditor(currentSelectedDateStr);
+        }
+
+        // ==========================================
+        // 공부 계획 및 디데이 탭 
+        // ==========================================
+        function toggleStudyAddForm() {
+            const el = document.getElementById('form-study-category-add');
+            el.classList.toggle('hidden');
+        }
+
+        async function addStudyCategoryCustom(e) {
+            e.preventDefault();
+            const catInput = document.getElementById('input-new-study-cat');
+            const dateInput = document.getElementById('input-new-study-exam-date');
+            const name = catInput.value.trim();
+            const exam_date = dateInput.value || null;
+
+            if (!name) return;
+
+            const { error } = await supabase
+                .from('study_categories')
+                .insert([{ user_id: currentActiveUserId, name, exam_date }]);
+
+            if (error) {
+                alert("과목 등록 실패 (중복명 확인): " + error.message);
+                return;
+            }
+
+            catInput.value = ""; dateInput.value = "";
+            toggleStudyAddForm();
+            await refreshAllServerData();
+            loadStudyTabPlan();
+        }
+
+        function loadStudyTabPlan() {
+            const tagContainer = document.getElementById('study-category-tags-container');
+            tagContainer.innerHTML = "";
+            const dropdown = document.getElementById('select-study-category-dropdown');
+            dropdown.innerHTML = "";
+
+            const myCats = cachedStudyCategories.filter(c => c.user_id === currentActiveUserId);
+
+            if (myCats.length === 0) {
+                tagContainer.innerHTML = `<span class="text-xs text-slate-400 italic">등록된 과목 속성이 없습니다.</span>`;
+                dropdown.innerHTML = `<option value="">등록 과목 없음</option>`;
+            } else {
+                myCats.forEach(c => {
+                    const badgeStr = c.exam_date ? calculateDDay(c.exam_date) : "상시";
+                    const span = document.createElement('span');
+                    span.className = "inline-flex items-center bg-theme-cream border border-orange-200 text-theme-orange text-xs font-black px-3 py-1.5 rounded-xl shadow-2xs";
+                    span.innerHTML = `📚 ${c.name} <span class="ml-1.5 px-1.5 py-0.5 text-[9px] bg-amber-500 text-white rounded">${badgeStr}</span>`;
+                    tagContainer.appendChild(span);
+
+                    const opt = document.createElement('option');
+                    opt.value = c.name; opt.innerText = c.name;
+                    dropdown.appendChild(opt);
+                });
+            }
+
+            renderStudyMiniCalendar();
+            renderStudySelectedDateLabel();
+        }
+
+        function renderStudyMiniCalendar() {
+            const grid = document.getElementById('study-mini-calendar-grid');
+            grid.innerHTML = "";
+            const days = getMay2026DaysInfo();
+
+            days.forEach(d => {
+                const div = document.createElement('div');
+                div.className = `p-1 text-center font-bold text-[10px] rounded-md cursor-pointer ${d.isCurrentMonth ? 'bg-slate-50 hover:bg-orange-100 text-slate-700' : 'text-slate-300 opacity-30'}`;
+                
+                if(d.fullDateStr === studyTabSelectedDateStr) {
+                    div.className += " bg-theme-orange text-white font-black shadow-xs";
+                }
+
+                div.innerText = d.dayNum;
+                div.onclick = () => {
+                    studyTabSelectedDateStr = d.fullDateStr;
+                    renderStudyMiniCalendar();
+                    renderStudySelectedDateLabel();
+                };
+                grid.appendChild(div);
+            });
+        }
+
+        function renderStudySelectedDateLabel() {
+            document.getElementById('study-selected-date-label').innerText = studyTabSelectedDateStr;
+            const container = document.getElementById('study-tab-master-list-box');
+            container.innerHTML = "";
+
+            const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === studyTabSelectedDateStr);
+            const todos = log ? log.study_todos || [] : [];
+
+            if(todos.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic py-2">지정 날짜에 공부 가이드 스케줄이 비어있습니다.</p>`;
+                return;
+            }
+
+            todos.forEach((t, index) => {
+                const row = document.createElement('div');
+                row.className = "flex justify-between items-center bg-slate-50 border p-2.5 rounded-xl text-xs font-bold";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2 truncate">
+                        <input type="checkbox" ${t.checked ? 'checked' : ''} onclick="toggleStudyTodoCheck('${studyTabSelectedDateStr}', ${index})" class="accent-orange-600">
+                        <span class="${t.checked ? 'line-through text-slate-400' : 'text-slate-800'}">[${t.category}] ${t.label}</span>
+                    </div>
+                    <button onclick="deleteStudyTodoMaster('${studyTabSelectedDateStr}', ${index})" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function addStudyTodoFromTab() {
+            const catSelect = document.getElementById('select-study-category-dropdown');
+            const labelInput = document.getElementById('input-study-todo-text');
+            const cat = catSelect.value;
+            const label = labelInput.value.trim();
+
+            if(!cat || !label) return;
+
+            const existingLog = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === studyTabSelectedDateStr);
+            let currentTodos = existingLog ? existingLog.study_todos || [] : [];
+            
+            currentTodos.push({ category: cat, label, checked: false });
+
+            const payload = {
+                user_id: currentActiveUserId,
+                log_date: studyTabSelectedDateStr,
+                study_todos: currentTodos,
+                meals: existingLog ? existingLog.meals : { morning: "", lunch: "", dinner: "" }
+            };
+
+            const { error } = await supabase.from('daily_life_logs').upsert(payload, { onConflict: 'user_id, log_date' });
+            if (error) { alert("저장 오류: " + error.message); return; }
+
+            labelInput.value = "";
+            await refreshAllServerData();
+            renderStudySelectedDateLabel();
+        }
+
+        async function toggleStudyTodoCheck(dateStr, idx) {
+            const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === dateStr);
+            if(!log || !log.study_todos) return;
+
+            log.study_todos[idx].checked = !log.study_todos[idx].checked;
+
+            const { error } = await supabase.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
+            if (error) alert("서버 연동 실패: " + error.message);
+            await refreshAllServerData();
+            renderStudySelectedDateLabel();
+        }
+
+        async function deleteStudyTodoMaster(dateStr, idx) {
+            const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === dateStr);
+            if(!log || !log.study_todos) return;
+
+            log.study_todos.splice(idx, 1);
+
+            const { error } = await supabase.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
+            if (error) alert("서버 반영 실패: " + error.message);
+            await refreshAllServerData();
+            renderStudySelectedDateLabel();
+        }
+
+        // ==========================================
+        // 피트니스 및 식단 리포트 탭 
+        // ==========================================
+        function loadDietTabAnalysis() {
+            const summaryBox = document.getElementById('diet-weekly-summary-list');
+            summaryBox.innerHTML = "";
+
+            const days = getMay2026DaysInfo();
+            const startIdx = 4; // 1주차 월요일 2026-04-27부터 매칭 분할
+            const targetWeekDays = days.slice(startIdx, startIdx + 7);
+
+            targetWeekDays.forEach(day => {
+                const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === day.fullDateStr);
+                const meals = log && log.meals ? log.meals : { morning: "", lunch: "", dinner: "" };
+                const am = log ? log.diet_am_w : null;
+                const pm = log ? log.diet_pm_w : null;
+
+                const card = document.createElement('div');
+                card.className = "p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-left font-bold space-y-1";
+                card.innerHTML = `
+                    <div class="text-slate-800 font-black border-b pb-1 text-[11px]">${day.fullDateStr} 요약 보드</div>
+                    <div class="text-slate-600">🥗 식사 현황: 아침[${meals.morning || '공백'}] | 점심[${meals.lunch || '공백'}] | 저녁[${meals.dinner || '공백'}]</div>
+                    <div class="text-theme-orange">⚖️ 체중 변화: 오전[${am ? am + 'kg' : '-'}] ➡️ 오후[${pm ? pm + 'kg' : '-'}]</div>
+                `;
+                summaryBox.appendChild(card);
+            });
+
+            buildWeightLineChart();
+        }
+
+        function buildWeightLineChart() {
+            const ctx = document.getElementById('dietWeightChart').getContext('2d');
+            if(globalWeightChartInstance) globalWeightChartInstance.destroy();
+
+            // 유저 데이터를 날짜 순 정렬하여 차트 데이터 매핑
+            const myLogs = cachedLifeLogs.filter(l => l.user_id === currentActiveUserId).sort((a,b) => new Date(a.log_date) - new Date(b.log_date));
+            const labels = myLogs.map(l => l.log_date.slice(5));
+            const amWeights = myLogs.map(l => l.diet_am_w);
+
+            globalWeightChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.length > 0 ? labels : ['기록없음'],
+                    datasets: [{
+                        label: '오전 공복체중(kg)',
+                        data: amWeights.length > 0 ? amWeights : [0],
+                        borderColor: '#f26631',
+                        backgroundColor: 'rgba(242,102,49,0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
+
+        // ==========================================
+        // 그외 일정 통합 관리 마스터 탭 
+        // ==========================================
+        function loadEtcScheduleTabMaster() {
+            const container = document.getElementById('etc-schedule-tab-master-list');
+            container.innerHTML = "";
+
+            // 모든 로그 정보 취합 정렬
+            const myLogs = cachedLifeLogs.filter(l => l.user_id === currentActiveUserId && l.schedules && l.schedules.length > 0);
+
+            if(myLogs.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic">등록 처리된 특별 타임 스케줄이 비어있습니다.</p>`;
+                return;
+            }
+
+            myLogs.forEach(log => {
+                if(log.schedules) {
+                    log.schedules.forEach((s, idx) => {
+                        const div = document.createElement('div');
+                        div.className = "flex justify-between items-center bg-slate-50 p-2 border.rounded-xl font-bold text-xs";
+                        div.innerHTML = `
+                            <span>📅 [${log.log_date}] - ${s}</span>
+                            <button onclick="deleteEtcScheduleMaster('${log.log_date}', ${idx})" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+            });
+        }
+
+        async function addEtcScheduleFromTab() {
+            const dateInput = document.getElementById('input-tab-etc-date');
+            const textInput = document.getElementById('input-tab-etc-text');
+            const dStr = dateInput.value;
+            const text = textInput.value.trim();
+
+            if(!dStr || !text) return;
+
+            const existingLog = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === dStr);
+            let currentSchedules = existingLog ? existingLog.schedules || [] : [];
+            currentSchedules.push(text);
+
+            const payload = {
+                user_id: currentActiveUserId,
+                log_date: dStr,
+                schedules: currentSchedules,
+                meals: existingLog ? existingLog.meals : { morning: "", lunch: "", dinner: "" }
+            };
+
+            const { error } = await supabase.from('daily_life_logs').upsert(payload, { onConflict: 'user_id, log_date' });
+            if(error) alert("서버 연동 오류: " + error.message);
+
+            textInput.value = "";
+            await refreshAllServerData();
+            loadEtcScheduleTabMaster();
+        }
+
+        async function deleteEtcScheduleMaster(dateStr, idx) {
+            const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === dateStr);
+            if(!log || !log.schedules) return;
+
+            log.schedules.splice(idx, 1);
+
+            const { error } = await supabase.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
+            if(error) alert("서버 삭제 에러: " + error.message);
+
+            await refreshAllServerData();
+            loadEtcScheduleTabMaster();
+        }
+
+        // ==========================================
+        // 가계부 자산관리 탭 
+        // ==========================================
+        function loadAccountTabLedger() {
+            const user = cachedCrewUsers.find(u => u.id === currentActiveUserId);
+            if(!user) return;
+
+            document.getElementById('input-asset-base').value = user.base_asset || 0;
+
+            const tbody = document.getElementById('acc-tab-table-body');
+            tbody.innerHTML = "";
+
+            const myLogs = cachedLifeLogs.filter(l => l.user_id === currentActiveUserId && l.spends && l.spends.length > 0);
+            let totalSpend = 0;
+
+            myLogs.forEach(log => {
+                log.spends.forEach((s, idx) => {
+                    totalSpend += s.cost;
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-slate-100 hover:bg-slate-50/50";
+                    tr.innerHTML = `
+                        <td class="p-2">${log.log_date}</td>
+                        <td class="p-2">${s.memo}</td>
+                        <td class="p-2 text-rose-600 font-bold">-${s.cost.toLocaleString()}원</td>
+                        <td class="p-2"><button onclick="deleteAccountSpendFromTabMaster('${log.log_date}', ${idx})" class="text-slate-300 hover:text-red-500"><i class="fa-solid fa-trash-can"></i></button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+
+            let salaryTotal = 0;
+            if (user.salaries) {
+                Object.values(user.salaries).forEach(v => salaryTotal += parseInt(v || 0));
+            }
+
+            const liveAsset = (user.base_asset || 0) + salaryTotal - totalSpend;
+            document.getElementById('label-total-asset').innerText = `${liveAsset.toLocaleString()}원`;
+        }
+
+        async function saveBaseAsset() {
+            const amt = parseInt(document.getElementById('input-asset-base').value) || 0;
+            const { error } = await supabase.from('crew_users').update({ base_asset: amt }).eq('id', currentActiveUserId);
+            if (error) alert("자산 설정 실패: " + error.message);
+
+            await refreshAllServerData();
+            loadAccountTabLedger();
+        }
+
+        async function addSalary() {
+            const m = document.getElementById('input-salary-month').value;
+            const amt = parseInt(document.getElementById('input-salary-amount').value) || 0;
+            
+            const user = cachedCrewUsers.find(u => u.id === currentActiveUserId);
+            let currentSalaries = user.salaries || {};
+            currentSalaries[m] = amt;
+
+            const { error } = await supabase.from('crew_users').update({ salaries: currentSalaries }).eq('id', currentActiveUserId);
+            if(error) alert("정산 처리 에러: " + error.message);
+
+            document.getElementById('input-salary-amount').value = "";
+            await refreshAllServerData();
+            loadAccountTabLedger();
+        }
+
+        async function addAccountSpendFromTab() {
+            const dInput = document.getElementById('input-tab-acc-date');
+            const tInput = document.getElementById('input-tab-acc-text');
+            const aInput = document.getElementById('input-tab-acc-amount');
+
+            const dateStr = dInput.value;
+            const memo = tInput.value.trim();
+            const cost = parseInt(aInput.value) || 0;
+
+            if(!dateStr || !memo || !cost) return;
+
+            const existingLog = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === dateStr);
+            let currentSpends = existingLog ? existingLog.spends || [] : [];
+            currentSpends.push({ memo, cost });
+
+            const payload = {
+                user_id: currentActiveUserId,
+                log_date: dateStr,
+                spends: currentSpends,
+                meals: existingLog ? existingLog.meals : { morning: "", lunch: "", dinner: "" }
+            };
+
+            const { error } = await supabase.from('daily_life_logs').upsert(payload, { onConflict: 'user_id, log_date' });
+            if (error) alert("가계부 동기화 실패: " + error.message);
+
+            tInput.value = ""; aInput.value = "";
+            await refreshAllServerData();
+            loadAccountTabLedger();
+        }
+
+        async function deleteAccountSpendFromTabMaster(dateStr, idx) {
+            const log = cachedLifeLogs.find(l => l.user_id === currentActiveUserId && l.log_date === dateStr);
+            if(!log || !log.spends) return;
+
+            log.spends.splice(idx, 1);
+
+            const { error } = await supabase.from('daily_life_logs').upsert(log, { onConflict: 'user_id, log_date' });
+            if(error) alert("서버 가계부 삭감 에러: " + error.message);
+
+            await refreshAllServerData();
+            loadAccountTabLedger();
+        }
+
+        // ==========================================
+        // 공통 모달 핸들러 
+        // ==========================================
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
