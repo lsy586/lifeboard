@@ -4,6 +4,65 @@ function toggleStudyAddForm() {
     el.classList.toggle('hidden');
 }
 
+function openStudyCategoryEdit(catId) {
+    const cat = cachedStudyCategories.find(c => c.id === catId);
+    if (!cat) return;
+
+    document.getElementById('form-study-category-add').classList.add('hidden');
+    document.getElementById('form-study-category-edit').classList.remove('hidden');
+    document.getElementById('study-edit-title').innerText = `${cat.name} 수정`;
+    document.getElementById('input-edit-study-cat-id').value = cat.id;
+    document.getElementById('input-edit-study-cat').value = cat.name;
+    document.getElementById('input-edit-study-exam-date').value = cat.exam_date || "";
+}
+
+function closeStudyEditForm() {
+    document.getElementById('form-study-category-edit').classList.add('hidden');
+}
+
+async function submitStudyCategoryEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('input-edit-study-cat-id').value;
+    const name = document.getElementById('input-edit-study-cat').value.trim();
+    const exam_date = document.getElementById('input-edit-study-exam-date').value || null;
+    if (!id || !name) return;
+
+    const { error } = await sb
+        .from('study_categories')
+        .update({ name, exam_date })
+        .eq('id', id);
+
+    if (error) {
+        alert("수정 실패: " + error.message);
+        return;
+    }
+
+    closeStudyEditForm();
+    await refreshAllServerData();
+    loadStudyTabPlan();
+}
+
+async function deleteStudyCategory() {
+    const id = document.getElementById('input-edit-study-cat-id').value;
+    const name = document.getElementById('input-edit-study-cat').value.trim();
+    if (!id) return;
+    if (!confirm(`'${name}' 과목을 삭제할까요?`)) return;
+
+    const { error } = await sb
+        .from('study_categories')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        alert("삭제 실패: " + error.message);
+        return;
+    }
+
+    closeStudyEditForm();
+    await refreshAllServerData();
+    loadStudyTabPlan();
+}
+
 async function addStudyCategoryCustom(e) {
     e.preventDefault();
     const catInput = document.getElementById('input-new-study-cat');
@@ -43,8 +102,10 @@ function loadStudyTabPlan() {
         myCats.forEach(c => {
             const badgeStr = c.exam_date ? calculateDDay(c.exam_date) : "상시";
             const span = document.createElement('span');
-            span.className = "inline-flex items-center bg-theme-cream border border-orange-200 text-theme-orange text-xs font-black px-3 py-1.5 rounded-xl shadow-2xs";
+            span.className = "inline-flex items-center bg-theme-cream border border-orange-200 text-theme-orange text-xs font-black px-3 py-1.5 rounded-xl shadow-2xs cursor-pointer hover:bg-orange-100 transition";
+            span.title = "클릭하여 수정";
             span.innerHTML = `📚 ${c.name} <span class="ml-1.5 px-1.5 py-0.5 text-[9px] bg-amber-500 text-white rounded">${badgeStr}</span>`;
+            span.onclick = () => openStudyCategoryEdit(c.id);
             tagContainer.appendChild(span);
 
             const opt = document.createElement('option');
