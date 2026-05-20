@@ -27,6 +27,9 @@ async function submitStudyCategoryEdit(e) {
     const exam_date = document.getElementById('input-edit-study-exam-date').value || null;
     if (!id || !name) return;
 
+    const oldCat = cachedStudyCategories.find(c => String(c.id) === String(id));
+    const oldName = oldCat ? oldCat.name : null;
+
     const { error } = await sb
         .from('study_categories')
         .update({ name, exam_date })
@@ -35,6 +38,26 @@ async function submitStudyCategoryEdit(e) {
     if (error) {
         alert("수정 실패: " + error.message);
         return;
+    }
+
+    if (oldName && oldName !== name) {
+        const affectedLogs = cachedLifeLogs.filter(l =>
+            l.user_id === currentActiveUserId &&
+            Array.isArray(l.study_todos) &&
+            l.study_todos.some(t => t.category === oldName)
+        );
+
+        for (const log of affectedLogs) {
+            const updatedTodos = log.study_todos.map(t =>
+                t.category === oldName ? { ...t, category: name } : t
+            );
+            const { error: logErr } = await sb
+                .from('daily_life_logs')
+                .upsert({ ...log, study_todos: updatedTodos }, { onConflict: 'user_id, log_date' });
+            if (logErr) {
+                alert(`공부 라인업 동기화 실패 (${log.log_date}): ${logErr.message}`);
+            }
+        }
     }
 
     closeStudyEditForm();
