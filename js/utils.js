@@ -53,6 +53,43 @@ function countWeeksInView(year, month) {
     return count;
 }
 
+// 스케줄 표시용 헬퍼: 문자열이면 그대로, 객체면 text 필드 반환
+function getScheduleText(s) {
+    if (s === null || s === undefined) return "";
+    if (typeof s === 'string') return s;
+    return s.text || "";
+}
+
+// 스케줄(문자열 or {text, end_date}) 이 특정 날짜에 표시되어야 하는지 판단
+// startDate = log.log_date (스케줄이 속한 log)
+function scheduleCoversDate(s, startDate, targetDate) {
+    if (typeof s === 'string') return startDate === targetDate;
+    const end = s.end_date || startDate;
+    return startDate <= targetDate && targetDate <= end;
+}
+
+// 특정 날짜에 표시될 모든 스케줄 텍스트 모음
+function getSchedulesForDate(dateStr) {
+    const out = [];
+    cachedLifeLogs.forEach(log => {
+        if (log.user_id !== currentActiveUserId) return;
+        if (!Array.isArray(log.schedules)) return;
+        log.schedules.forEach(s => {
+            if (scheduleCoversDate(s, log.log_date, dateStr)) {
+                out.push(getScheduleText(s));
+            }
+        });
+    });
+    return out;
+}
+
+// 특정 날짜에 시험일이 잡힌 study category 목록
+function getExamsForDate(dateStr) {
+    return cachedStudyCategories.filter(c =>
+        c.user_id === currentActiveUserId && c.exam_date === dateStr
+    );
+}
+
 // 공통 모달 핸들러
 function openModal(id) {
     document.getElementById(id).classList.remove('hidden');

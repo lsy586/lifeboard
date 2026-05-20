@@ -54,7 +54,11 @@ function renderInlineEditorForm() {
         }
 
         const workoutRows = data.workouts.map(w => `<span class="inline-block bg-emerald-50 text-emerald-800 text-[11px] font-bold px-2 py-1 rounded-md border border-emerald-100">💪 ${w}</span>`).join(' ') || `<span class="text-xs text-slate-400 italic">미기입</span>`;
-        const scheduleRows = data.schedules.map(s => `<span class="inline-block bg-indigo-50 text-indigo-800 text-[11px] font-bold px-2 py-1 rounded-md border border-indigo-100">📌 ${s}</span>`).join(' ') || `<span class="text-xs text-slate-400 italic">미기입</span>`;
+        const scheduleRows = data.schedules.map(s => {
+            const t = getScheduleText(s);
+            const range = (typeof s === 'object' && s && s.end_date) ? ` (~${s.end_date})` : '';
+            return `<span class="inline-block bg-indigo-50 text-indigo-800 text-[11px] font-bold px-2 py-1 rounded-md border border-indigo-100">📌 ${t}${range}</span>`;
+        }).join(' ') || `<span class="text-xs text-slate-400 italic">미기입</span>`;
 
         let spendRows = "";
         if (data.spends.length === 0) {
@@ -279,9 +283,11 @@ function renderInlineFormSchedulesPreview() {
         return;
     }
     pendingInlineSchedules.forEach((s, i) => {
+        const t = getScheduleText(s);
+        const range = (typeof s === 'object' && s && s.end_date) ? ` (~${s.end_date})` : '';
         const div = document.createElement('div');
         div.className = "flex justify-between items-center bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-700";
-        div.innerHTML = `<span class="truncate">📌 ${s}</span><button type="button" onclick="deleteInlineSchedule(${i})" class="text-rose-500 hover:text-rose-700 font-bold px-1">✕</button>`;
+        div.innerHTML = `<span class="truncate">📌 ${t}${range}</span><button type="button" onclick="deleteInlineSchedule(${i})" class="text-rose-500 hover:text-rose-700 font-bold px-1">✕</button>`;
         box.appendChild(div);
     });
 }

@@ -216,8 +216,12 @@
             <div id="tab-schedule-etc" class="tab-content space-y-4 hidden">
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
                     <h2 class="text-base font-black text-slate-800">📌 그외 일정 통합 관리 보드</h2>
-                    <div class="flex flex-col sm:flex-row gap-2">
-                        <input type="date" id="input-tab-etc-date" class="p-2 border border-slate-200 rounded-xl text-xs font-bold">
+                    <div class="flex flex-col sm:flex-row gap-2 items-stretch">
+                        <div class="flex items-center gap-1">
+                            <input type="date" id="input-tab-etc-date" class="p-2 border border-slate-200 rounded-xl text-xs font-bold" title="시작일">
+                            <span class="text-xs font-black text-slate-400">~</span>
+                            <input type="date" id="input-tab-etc-end-date" class="p-2 border border-slate-200 rounded-xl text-xs font-bold" title="종료일 (선택, 비우면 당일)">
+                        </div>
                         <input type="text" id="input-tab-etc-text" placeholder="약속 장소 및 스케줄 내용 입력" class="flex-1 p-2 border border-slate-200 rounded-xl text-xs font-bold">
                         <button onclick="addEtcScheduleFromTab()" class="px-4 py-2 bg-slate-900 text-white font-black text-xs rounded-xl hover:opacity-90">일정 추가</button>
                     </div>
