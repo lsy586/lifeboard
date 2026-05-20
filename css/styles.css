@@ -1,0 +1,15 @@
+body { background-color: #fcfaf7; font-family: system-ui, -apple-system, sans-serif; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.theme-orange { color: #f26631; }
+.bg-theme-orange { background-color: #f26631; }
+.bg-theme-cream { background-color: #fff6f0; }
+
+/* 일정 아이템 2줄 클램프 (Tailwind line-clamp-2 fallback) */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
